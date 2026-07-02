@@ -1,186 +1,80 @@
-import streamlit as st
-import plotly.express as px
-
-from mountains import mountains
-from weather import get_weather, get_current_weather
-from danger import judge, recommend
-from equipment import equipment
-from mountain import summit_temp
+import requests
+import pandas as pd
 
 # ---------------------------------------------------------
-# Streamlit 基本設定
+# ① Open-Meteo（14日予報）
 # ---------------------------------------------------------
-st.set_page_config(
-    page_title="Mountain Weather AI",
-    page_icon="🏔",
-    layout="wide"
-)
+def get_weather(lat, lon):
+    url = (
+        "https://api.open-meteo.com/v1/forecast?"
+        f"latitude={lat}&longitude={lon}"
+        "&daily=temperature_2m_max,temperature_2m_min,"
+        "precipitation_probability_max,windspeed_10m_max,"
+        "sunrise,sunset,weathercode"
+        "&timezone=Asia/Tokyo"
+    )
 
-st.title("🏔 Mountain Weather AI Pro")
-st.caption("登山専用AI天気アプリ")
-st.divider()
+    res = requests.get(url)
+    data = res.json()
 
-# ---------------------------------------------------------
-# 山選択
-# ---------------------------------------------------------
-mountain = st.selectbox("山を選択", mountains.keys())
+    df = pd.DataFrame({
+        "日付": data["daily"]["time"],
+        "最高気温": data["daily"]["temperature_2m_max"],
+        "最低気温": data["daily"]["temperature_2m_min"],
+        "降水確率": data["daily"]["precipitation_probability_max"],
+        "風速": data["daily"]["windspeed_10m_max"],
+        "日の出": data["daily"]["sunrise"],
+        "日の入り": data["daily"]["sunset"],
+        "天気コード": data["daily"]["weathercode"],
+    })
 
-lat = mountains[mountain]["lat"]
-lon = mountains[mountain]["lon"]
-height = mountains[mountain]["height"]
+    df["天気"] = df["天気コード"].apply(weather_code_to_text)
 
-st.info(f"標高 {height} m")
+    return df
 
-# ---------------------------------------------------------
-# OpenWeatherMap 現在の天気
-# ---------------------------------------------------------
-api_key = st.secrets["OPENWEATHER_KEY"]
-current = get_current_weather(lat, lon, api_key)
 
-st.subheader("⛅ 現在の天気（OpenWeatherMap）")
+def weather_code_to_text(code):
+    mapping = {
+        0: "快晴",
+        1: "晴れ",
+        2: "薄曇り",
+        3: "曇り",
+        45: "霧",
+        48: "霧（着氷）",
+        51: "霧雨（弱）",
+        53: "霧雨（中）",
+        55: "霧雨（強）",
+        61: "雨（弱）",
+        63: "雨（中）",
+        65: "雨（強）",
+        71: "雪（弱）",
+        73: "雪（中）",
+        75: "雪（強）",
+        80: "にわか雨（弱）",
+        81: "にわか雨（中）",
+        82: "にわか雨（強）",
+    }
+    return mapping.get(code, "不明")
 
-c1, c2, c3 = st.columns(3)
-c1.metric("現在の気温", f"{current['現在気温']}℃")
-c2.metric("体感温度", f"{current['体感温度']}℃")
-c3.metric("湿度", f"{current['湿度']}%")
-
-c4, c5 = st.columns(2)
-c4.metric("現在の天気", current["現在天気"])
-c5.metric("風速（現在）", f"{current['風速']} m/s")
-
-st.divider()
-
-# ---------------------------------------------------------
-# Open-Meteo 14日予報
-# ---------------------------------------------------------
-df = get_weather(lat, lon)
-
-# ---------------------------------------------------------
-# おすすめ度計算
-# ---------------------------------------------------------
-df["おすすめ"] = ""
-for i in range(len(df)):
-    rain = df.loc[i, "降水確率"]
-    wind = df.loc[i, "風速"]
-
-    if rain < 30 and wind < 8:
-        df.loc[i, "おすすめ"] = "★★★★★"
-    elif rain < 50:
-        df.loc[i, "おすすめ"] = "★★★★☆"
-    else:
-        df.loc[i, "おすすめ"] = "★★☆☆☆"
-
-st.markdown("---")
 
 # ---------------------------------------------------------
-# 日付選択
+# ② OpenWeatherMap（現在の天気）
 # ---------------------------------------------------------
-selected_date = st.selectbox("📅 日付を選択してください", df["日付"])
-today = df[df["日付"] == selected_date].iloc[0]
+def get_current_weather(lat, lon, api_key):
+    url = (
+        f"https://api.openweathermap.org/data/2.5/weather"
+        f"?lat={lat}&lon={lon}&appid={api_key}&units=metric&lang=ja"
+    )
 
-# ---------------------------------------------------------
-# 今日の天気サマリー
-# ---------------------------------------------------------
-st.markdown("## 📢 Today's Topics")
+    res = requests.get(url)
+    data = res.json()
 
-col1, col2, col3 = st.columns(3)
+    current = {
+        "現在気温": data["main"]["temp"],
+        "体感温度": data["main"]["feels_like"],
+        "現在天気": data["weather"][0]["description"],
+        "湿度": data["main"]["humidity"],
+        "風速": data["wind"]["speed"],
+    }
 
-with col1:
-    st.markdown(f"# {today['天気']}")
-    st.metric("最高気温", f"{today['最高気温']}℃")
-    st.metric("最低気温", f"{today['最低気温']}℃")
-
-with col2:
-    st.metric("風速", f"{today['風速']} m/s")
-    st.metric("降水確率", f"{today['降水確率']} %")
-
-with col3:
-    st.metric("おすすめ", today["おすすめ"])
-
-# ---------------------------------------------------------
-# AI コメント
-# ---------------------------------------------------------
-st.markdown("### 🤖 AIコメント")
-
-if today["風速"] >= 15:
-    comment = "🔴 強風予報です。登山は延期をおすすめします。"
-elif today["降水確率"] >= 80:
-    comment = "🌧️ 雨の可能性が非常に高いため、防水対策が必要です。"
-elif today["降水確率"] >= 50:
-    comment = "☔ 雨具を必ず持参してください。"
-elif today["最高気温"] >= 30:
-    comment = "🥵 熱中症対策として十分な水分を持参しましょう。"
-else:
-    comment = "☀️ 登山に適したコンディションです。"
-
-st.info(comment)
-
-# ---------------------------------------------------------
-# 危険度判定
-# ---------------------------------------------------------
-danger, score = judge(today["風速"], today["降水確率"])
-star = recommend(score)
-summit = summit_temp(today["最高気温"], height)
-gear = equipment(summit, today["風速"], today["降水確率"])
-
-# ---------------------------------------------------------
-# メトリクス表示
-# ---------------------------------------------------------
-col1, col2, col3, col4 = st.columns(4)
-col1.metric("天気", today["天気"])
-col2.metric("最高", f"{today['最高気温']}℃")
-col3.metric("降水", f"{today['降水確率']}%")
-col4.metric("風", f"{today['風速']} m/s")
-
-col5, col6, col7, col8 = st.columns(4)
-col5.metric("危険度", danger)
-col6.metric("AIスコア", f"{score}点")
-col7.metric("山頂気温", f"{summit}℃")
-col8.metric("おすすめ度", star)
-
-st.divider()
-
-# ---------------------------------------------------------
-# 日の出・日の入り
-# ---------------------------------------------------------
-st.subheader("🌅 日の出・日の入り")
-
-c1, c2 = st.columns(2)
-
-sunrise = today["日の出"]
-sunset = today["日の入り"]
-
-if hasattr(sunrise, "strftime"):
-    c1.info(sunrise.strftime("%H:%M"))
-    c2.info(sunset.strftime("%H:%M"))
-else:
-    c1.info(sunrise[11:16])
-    c2.info(sunset[11:16])
-
-# ---------------------------------------------------------
-# 装備提案
-# ---------------------------------------------------------
-st.subheader("🥾 AI装備提案")
-for g in gear:
-    st.success(g)
-
-# ---------------------------------------------------------
-# 14日予報
-# ---------------------------------------------------------
-st.subheader("14日予報")
-st.dataframe(df, use_container_width=True, hide_index=True)
-
-# ---------------------------------------------------------
-# グラフ
-# ---------------------------------------------------------
-st.subheader("最高気温")
-fig = px.line(df, x="日付", y="最高気温", markers=True)
-st.plotly_chart(fig, use_container_width=True)
-
-st.subheader("風速")
-fig = px.bar(df, x="日付", y="風速")
-st.plotly_chart(fig, use_container_width=True)
-
-st.subheader("降水確率")
-fig = px.bar(df, x="日付", y="降水確率")
-st.plotly_chart(fig, use_container_width=True)
+    return current
