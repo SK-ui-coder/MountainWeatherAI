@@ -59,9 +59,10 @@ df = get_weather(lat, lon)
 # おすすめ度計算
 # ---------------------------------------------------------
 df["おすすめ"] = ""
+
 for i in range(len(df)):
-    rain = df.loc[i, "降水確率"]
-    wind = df.loc[i, "風速"]
+    rain = float(df.loc[i, "降水確率"])
+    wind = float(df.loc[i, "風速"])
 
     if rain < 30 and wind < 8:
         df.loc[i, "おすすめ"] = "★★★★★"
@@ -70,7 +71,6 @@ for i in range(len(df)):
     else:
         df.loc[i, "おすすめ"] = "★★☆☆☆"
 
-st.markdown("---")
 
 # ---------------------------------------------------------
 # 日付選択
