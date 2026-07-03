@@ -134,3 +134,41 @@ def get_current_weather(lat, lon, api_key):
     }
 
     return current
+
+
+# ---------------------------------------------------------
+# 90日予報（Open-Meteo）
+# ---------------------------------------------------------
+def get_90days(lat, lon):
+
+    params = {
+        "latitude": lat,
+        "longitude": lon,
+        "daily": [
+            "weather_code",
+            "temperature_2m_max",
+            "temperature_2m_min",
+            "precipitation_probability_max",
+            "wind_speed_10m_max"
+        ],
+        "forecast_days": 90,
+        "timezone": "Asia/Tokyo"
+    }
+
+    res = requests.get(BASE, params=params)
+    res.raise_for_status()
+    data = res.json()
+
+    daily = data["daily"]
+
+    df = pd.DataFrame({
+        "日付": daily["time"],
+        "天気": [icon(i) for i in daily["weather_code"]],
+        "最高気温": daily["temperature_2m_max"],
+        "最低気温": daily["temperature_2m_min"],
+        "降水確率": daily["precipitation_probability_max"],
+        "風速": daily["wind_speed_10m_max"],
+    })
+
+    return df
+
