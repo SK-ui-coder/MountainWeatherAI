@@ -1,30 +1,50 @@
 import requests
 import pandas as pd
+from datetime import datetime
 
 BASE_URL = "https://api.open-meteo.com/v1/forecast"
 
 
+# ---------------------------------------------------------
+# 天気アイコン
+# ---------------------------------------------------------
 def weather_icon(code):
-
     if code == 0:
         return "☀️"
-    elif code in [1,2]:
+    elif code in [1, 2]:
         return "🌤"
     elif code == 3:
         return "☁️"
-    elif code in [45,48]:
+    elif code in [45, 48]:
         return "🌫"
-    elif code in [51,53,55]:
+    elif code in [51, 53, 55]:
         return "🌦"
-    elif code in [61,63,65]:
+    elif code in [61, 63, 65]:
         return "🌧"
-    elif code in [71,73,75]:
+    elif code in [71, 73, 75]:
         return "❄️"
-    elif code in [95,96,99]:
+    elif code in [95, 96, 99]:
         return "⛈"
     return "❓"
 
 
+# ---------------------------------------------------------
+# 風向（度 → 方位）
+# ---------------------------------------------------------
+def wind_direction(deg):
+    dirs = [
+        "北", "北北東", "北東", "東北東",
+        "東", "東南東", "南東", "南南東",
+        "南", "南南西", "南西", "西南西",
+        "西", "西北西", "北西", "北北西"
+    ]
+    idx = int((deg + 11.25) / 22.5) % 16
+    return dirs[idx]
+
+
+# ---------------------------------------------------------
+# 14日予報（Open-Meteo）
+# ---------------------------------------------------------
 def get_weather(lat, lon):
 
     params = {
@@ -64,9 +84,54 @@ def get_weather(lat, lon):
 
 
 # ---------------------------------------------------------
-# 追加：OpenWeatherMap（現在の天気）
+# 24時間予報（Open-Meteo）
+# ---------------------------------------------------------
+def get_hourly(lat, lon):
+
+    params = {
+        "latitude": lat,
+        "longitude": lon,
+        "hourly": [
+            "temperature_2m",
+            "relative_humidity_2m",
+            "precipitation",
+            "weather_code",
+            "wind_speed_10m",
+            "wind_direction_10m"
+        ],
+        "forecast_days": 2,
+        "timezone": "Asia/Tokyo"
+    }
+
+    res = requests.get(BASE_URL, params=params)
+    res.raise_for_status()
+    data = res.json()
+
+    hourly = data["hourly"]
+
+    df = pd.DataFrame({
+        "時刻": hourly["time"],
+        "気温": hourly["temperature_2m"],
+        "湿度": hourly["relative_humidity_2m"],
+        "雨量": hourly["precipitation"],
+        "天気": [weather_icon(i) for i in hourly["weather_code"]],
+        "風速": hourly["wind_speed_10m"],
+        "風向": [wind_direction(d) for d in hourly["wind_direction_10m"]],
+    })
+
+    # 直近24時間だけに絞る
+    df["時刻"] = pd.to_datetime(df["時刻"])
+    now = datetime.now()
+    df = df[df["時刻"] >= now].head(24)
+
+    return df
+
+
+# ---------------------------------------------------------
+# OpenWeatherMap（現在の天気）
 # ---------------------------------------------------------
 def get_current_weather(lat, lon, api_key):
+
     url = (
         f"https://api.openweathermap.org/data/2.5/weather"
         f"?lat={lat}&lon={lon}&appid={api_key}&units=metric&lang=ja"
@@ -81,6 +146,7 @@ def get_current_weather(lat, lon, api_key):
         "現在天気": data["weather"][0]["description"],
         "湿度": data["main"]["humidity"],
         "風速": data["wind"]["speed"],
+        "風向": wind_direction(data["wind"]["deg"]) if "deg" in data["wind"] else "不明",
     }
 
     return current
