@@ -103,6 +103,8 @@ def get_hourly(lat, lon):
         "天気": [weather_icon(i) for i in hourly["weather_code"]],
         "風速": hourly["wind_speed_10m"],
         "風向": [wind_direction(d) for d in hourly["wind_direction_10m"]],
+        "風向度": hourly["wind_direction_10m"],
+        
     })
 
     now = datetime.now()
