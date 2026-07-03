@@ -4,10 +4,6 @@ from datetime import datetime
 
 BASE_URL = "https://api.open-meteo.com/v1/forecast"
 
-
-# ---------------------------------------------------------
-# 天気アイコン
-# ---------------------------------------------------------
 def weather_icon(code):
     if code == 0:
         return "☀️"
@@ -27,10 +23,6 @@ def weather_icon(code):
         return "⛈"
     return "❓"
 
-
-# ---------------------------------------------------------
-# 風向（度 → 方位）
-# ---------------------------------------------------------
 def wind_direction(deg):
     dirs = [
         "北", "北北東", "北東", "東北東",
@@ -41,12 +33,7 @@ def wind_direction(deg):
     idx = int((deg + 11.25) / 22.5) % 16
     return dirs[idx]
 
-
-# ---------------------------------------------------------
-# 14日予報（Open-Meteo）
-# ---------------------------------------------------------
 def get_weather(lat, lon):
-
     params = {
         "latitude": lat,
         "longitude": lon,
@@ -82,9 +69,8 @@ def get_weather(lat, lon):
 
     return df
 
-
 # ---------------------------------------------------------
-# 24時間予報（Open-Meteo）
+# 24時間予報（ここが今回の ImportError の原因）
 # ---------------------------------------------------------
 def get_hourly(lat, lon):
 
@@ -110,7 +96,7 @@ def get_hourly(lat, lon):
     hourly = data["hourly"]
 
     df = pd.DataFrame({
-        "時刻": hourly["time"],
+        "時刻": pd.to_datetime(hourly["time"]),
         "気温": hourly["temperature_2m"],
         "湿度": hourly["relative_humidity_2m"],
         "雨量": hourly["precipitation"],
@@ -119,19 +105,15 @@ def get_hourly(lat, lon):
         "風向": [wind_direction(d) for d in hourly["wind_direction_10m"]],
     })
 
-    # 直近24時間だけに絞る
-    df["時刻"] = pd.to_datetime(df["時刻"])
     now = datetime.now()
     df = df[df["時刻"] >= now].head(24)
 
     return df
 
-
 # ---------------------------------------------------------
-# OpenWeatherMap（現在の天気）
+# 現在の天気（OpenWeatherMap）
 # ---------------------------------------------------------
 def get_current_weather(lat, lon, api_key):
-
     url = (
         f"https://api.openweathermap.org/data/2.5/weather"
         f"?lat={lat}&lon={lon}&appid={api_key}&units=metric&lang=ja"
