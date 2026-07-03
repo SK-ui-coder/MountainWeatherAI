@@ -4,7 +4,8 @@ import pandas as pd
 import gpxpy
 import pydeck as pdk
 
-from mountains import mountains
+import mountains
+
 from weather import get_weather, get_hourly, get_current_weather, get_90days
 from danger import judge, recommend
 from equipment import equipment
@@ -48,12 +49,12 @@ st.caption("登山専用AI天気アプリ")
 st.divider()
 
 # ---------------------------------------------------------
-# 山選択
+# 山選択（※ここが修正ポイント）
 # ---------------------------------------------------------
-mountain = st.selectbox("山を選択してください", mountains.keys())
-lat = mountains[mountain]["lat"]
-lon = mountains[mountain]["lon"]
-height = mountains[mountain]["height"]
+mountain = st.selectbox("山を選択してください", mountains.mountains.keys())
+lat = mountains.mountains[mountain]["lat"]
+lon = mountains.mountains[mountain]["lon"]
+height = mountains.mountains[mountain]["height"]
 
 st.info(f"標高：{height} m")
 
@@ -93,7 +94,7 @@ selected_date = st.selectbox("📅 日付を選択", df["日付"])
 today = df[df["日付"] == selected_date].iloc[0]
 
 # ---------------------------------------------------------
-# Today's Topics（重複なし）
+# Today's Topics
 # ---------------------------------------------------------
 st.markdown("## 📢 Today's Topics")
 
@@ -116,17 +117,17 @@ with col3:
 # ---------------------------------------------------------
 st.markdown("### 🤖 AIコメント")
 
-weather = today["天気"]
+weather_icon = today["天気"]
 
 if today["風速"] >= 15:
     comment = "🔴 強風です。登山は危険なので延期をおすすめします。"
-elif weather in ["🌧", "🌦", "⛈"]:
+elif weather_icon in ["🌧", "🌦", "⛈"]:
     comment = "🌧 雨の可能性があります。防水対策をしっかり行いましょう。"
 elif today["降水確率"] >= 50:
     comment = "☔ 雨具を必ず持参してください。"
 elif today["最高気温"] >= 30:
     comment = "🥵 気温が高いので熱中症対策を万全に。"
-elif weather == "❄️":
+elif weather_icon == "❄️":
     comment = "❄️ 雪の可能性があります。防寒装備を強化してください。"
 else:
     comment = "☀️ 登山に適したコンディションです。"
@@ -136,12 +137,12 @@ st.info(comment)
 # ---------------------------------------------------------
 # 危険度・山頂気温・おすすめ度
 # ---------------------------------------------------------
-danger, score = judge(today["風速"], today["降水確率"])
+danger_level, score = judge(today["風速"], today["降水確率"])
 star = recommend(score)
 summit = summit_temp(today["最高気温"], height)
 
 col5, col6, col7, col8 = st.columns(4)
-col5.metric("危険度", danger)
+col5.metric("危険度", danger_level)
 col6.metric("AIスコア", f"{score}点")
 col7.metric("山頂気温", f"{summit}℃")
 col8.metric("おすすめ度", star)
@@ -156,7 +157,7 @@ def mountain_difficulty(info):
     distance = info.get("distance", 5)
     up = info.get("up", height)
 
-    score = height/100 + distance*2 + up/200
+    score = height / 100 + distance * 2 + up / 200
 
     if score < 20:
         level = "★ 初心者向け"
@@ -169,7 +170,7 @@ def mountain_difficulty(info):
 
     return round(score), level
 
-score_d, level_d = mountain_difficulty(mountains[mountain])
+score_d, level_d = mountain_difficulty(mountains.mountains[mountain])
 
 st.subheader("⛰ 山の難易度（AI判定）")
 st.metric("難易度スコア", f"{score_d}点")
