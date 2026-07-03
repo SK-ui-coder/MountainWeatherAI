@@ -60,7 +60,8 @@ st.info(f"標高：{height} m")
 # ---------------------------------------------------------
 # 現在の天気
 # ---------------------------------------------------------
-api_key = st.secrets["OPENWEATHER_KEY"]
+api_key = "da865c8f1e19541afd9d604af0c3899"
+
 current = get_current_weather(lat, lon, api_key)
 
 st.subheader("⛅ 現在の天気")
