@@ -1,3 +1,5 @@
-streamlit
+gpxpy
+pydeck
 plotly
 pandas
+streamlit
