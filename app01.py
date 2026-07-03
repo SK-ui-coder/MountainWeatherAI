@@ -115,7 +115,7 @@ def get_90days(lat, lon):
 # ---------------------------------------------------------
 # CSS（白い表示の不具合を完全修正）
 # ---------------------------------------------------------
-st.markdown("""
+css = """
 <style>
 
 .main, body {
@@ -158,17 +158,6 @@ thead th {
 }
 
 </style>
-""", unsafe_allow_html=True)
+"""
 
-st.subheader("🕒 24時間予報")
-
-hourly = get_hourly(lat, lon)
-hourly["時刻表示"] = hourly["時刻"].dt.strftime("%H:%M")
-
-st.dataframe(
-    hourly[["時刻表示", "天気", "気温", "湿度", "雨量", "風速", "コンパス"]],
-    use_container_width=True,
-    hide_index=True
-)
-
-
+st.markdown(css, unsafe_allow_html=True)
