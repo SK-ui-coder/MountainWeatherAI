@@ -4,6 +4,9 @@ from datetime import datetime
 
 BASE_URL = "https://api.open-meteo.com/v1/forecast"
 
+# ---------------------------------------------------------
+# 天気アイコン
+# ---------------------------------------------------------
 def weather_icon(code):
     if code == 0:
         return "☀️"
@@ -23,6 +26,9 @@ def weather_icon(code):
         return "⛈"
     return "❓"
 
+# ---------------------------------------------------------
+# 風向（度 → 日本語）
+# ---------------------------------------------------------
 def wind_direction(deg):
     dirs = [
         "北", "北北東", "北東", "東北東",
@@ -33,19 +39,15 @@ def wind_direction(deg):
     idx = int((deg + 11.25) / 22.5) % 16
     return dirs[idx]
 
+# ---------------------------------------------------------
+# 14日予報（Open-Meteo）
+# ---------------------------------------------------------
 def get_weather(lat, lon):
+
     params = {
         "latitude": lat,
         "longitude": lon,
-        "daily": [
-            "weather_code",
-            "temperature_2m_max",
-            "temperature_2m_min",
-            "precipitation_probability_max",
-            "wind_speed_10m_max",
-            "sunrise",
-            "sunset"
-        ],
+        "daily": "weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,wind_speed_10m_max,sunrise,sunset",
         "forecast_days": 14,
         "timezone": "Asia/Tokyo"
     }
@@ -70,21 +72,14 @@ def get_weather(lat, lon):
     return df
 
 # ---------------------------------------------------------
-# 24時間予報（ここが今回の ImportError の原因）
+# 24時間予報（Open-Meteo）
 # ---------------------------------------------------------
 def get_hourly(lat, lon):
 
     params = {
         "latitude": lat,
         "longitude": lon,
-        "hourly": [
-            "temperature_2m",
-            "relative_humidity_2m",
-            "precipitation",
-            "weather_code",
-            "wind_speed_10m",
-            "wind_direction_10m"
-        ],
+        "hourly": "temperature_2m,relative_humidity_2m,precipitation,weather_code,wind_speed_10m,wind_direction_10m",
         "forecast_days": 2,
         "timezone": "Asia/Tokyo"
     }
@@ -104,7 +99,6 @@ def get_hourly(lat, lon):
         "風速": hourly["wind_speed_10m"],
         "風向": [wind_direction(d) for d in hourly["wind_direction_10m"]],
         "風向度": hourly["wind_direction_10m"],
-        
     })
 
     now = datetime.now()
@@ -116,12 +110,14 @@ def get_hourly(lat, lon):
 # 現在の天気（OpenWeatherMap）
 # ---------------------------------------------------------
 def get_current_weather(lat, lon, api_key):
+
     url = (
         f"https://api.openweathermap.org/data/2.5/weather"
         f"?lat={lat}&lon={lon}&appid={api_key}&units=metric&lang=ja"
     )
 
     res = requests.get(url)
+    res.raise_for_status()
     data = res.json()
 
     current = {
@@ -135,7 +131,6 @@ def get_current_weather(lat, lon, api_key):
 
     return current
 
-
 # ---------------------------------------------------------
 # 90日予報（Open-Meteo）
 # ---------------------------------------------------------
@@ -144,18 +139,12 @@ def get_90days(lat, lon):
     params = {
         "latitude": lat,
         "longitude": lon,
-        "daily": [
-            "weather_code",
-            "temperature_2m_max",
-            "temperature_2m_min",
-            "precipitation_probability_max",
-            "wind_speed_10m_max"
-        ],
+        "daily": "weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,wind_speed_10m_max",
         "forecast_days": 90,
         "timezone": "Asia/Tokyo"
     }
 
-    res = requests.get(BASE, params=params)
+    res = requests.get(BASE_URL, params=params)
     res.raise_for_status()
     data = res.json()
 
@@ -163,7 +152,7 @@ def get_90days(lat, lon):
 
     df = pd.DataFrame({
         "日付": daily["time"],
-        "天気": [icon(i) for i in daily["weather_code"]],
+        "天気": [weather_icon(i) for i in daily["weather_code"]],
         "最高気温": daily["temperature_2m_max"],
         "最低気温": daily["temperature_2m_min"],
         "降水確率": daily["precipitation_probability_max"],
@@ -171,4 +160,3 @@ def get_90days(lat, lon):
     })
 
     return df
-
