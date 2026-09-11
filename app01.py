@@ -9,59 +9,6 @@ from weather import get_weather
 from danger import judge, recommend
 from equipment import equipment
 from mountain import summit_temp
-legend_html = """
-<div style="
-    position: fixed;
-    bottom: 20px;
-    left: 20px;
-    z-index: 9999;
-    background-color: #ffffff !important;
-    color: #222222 !important;
-    padding: 12px 16px;
-    border: 2px solid #555555;
-    border-radius: 10px;
-    font-size: 14px;
-    line-height: 1.9;
-    box-shadow: 0 3px 10px rgba(0,0,0,0.35);
-">
-
-<div style="
-    color: #111111 !important;
-    font-weight: bold;
-    margin-bottom: 5px;
-">
-🏔️ 山マップ
-</div>
-
-<div style="color:#111111 !important;">
-<span style="color:#e53935 !important; font-size:18px;">●</span>
-山頂
-</div>
-
-<div style="color:#111111 !important;">
-<span style="color:#43a047 !important; font-size:18px;">●</span>
-山小屋
-</div>
-
-<div style="color:#111111 !important;">
-<span style="color:#1e88e5 !important; font-size:18px;">●</span>
-登山口
-</div>
-
-<div style="color:#111111 !important;">
-<span style="color:#fb8c00 !important; font-size:18px;">●</span>
-テント場
-</div>
-
-<div style="color:#111111 !important;">
-<span style="color:#8e24aa !important; font-size:18px;">●</span>
-避難小屋
-</div>
-
-</div>
-"""
-
-m.get_root().html.add_child(folium.Element(legend_html))
 
 
 # ---------------------------------------------------------
