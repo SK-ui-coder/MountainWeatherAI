@@ -64,41 +64,111 @@ st.info(
 )
 
 # ---------------------------------------------------------
-# 予報地点マップ
+# 登山スポット・予報地点マップ
 # ---------------------------------------------------------
-st.subheader("🗺️ 予報地点マップ")
+st.subheader("🗺️ 登山マップ")
 
+# mountains.py に "locations" があれば、
+# 山頂・山小屋・登山口・テント場をまとめて表示します。
+# なければ従来の予報地点だけを表示します。
+if "locations" in mountain_data:
+    map_locations = mountain_data["locations"]
+else:
+    map_locations = [{
+        "name": selected_point["name"],
+        "lat": selected_point["lat"],
+        "lon": selected_point["lon"],
+        "height": selected_point["height"],
+        "type": "山頂",
+    }]
+
+# 表示対象の種類
+location_types = ["山頂", "山小屋", "登山口", "テント場"]
+selected_types = st.multiselect(
+    "表示する地点",
+    location_types,
+    default=location_types,
+)
+
+# 地図中心
 m = folium.Map(
     location=[lat, lon],
     zoom_start=13,
-    control_scale=True
+    control_scale=True,
 )
 
-for point in forecast_points:
-    is_selected = point["name"] == selected_point_name
+# 種類ごとのアイコン
+icon_settings = {
+    "山頂": {"icon": "flag", "prefix": "fa", "color": "red"},
+    "山小屋": {"icon": "home", "prefix": "fa", "color": "green"},
+    "登山口": {"icon": "sign-in", "prefix": "fa", "color": "blue"},
+    "テント場": {"icon": "cloud", "prefix": "fa", "color": "orange"},
+}
+
+for point in map_locations:
+    point_type = point.get("type", "山頂")
+
+    if point_type not in selected_types:
+        continue
+
+    settings = icon_settings.get(
+        point_type,
+        {"icon": "info-sign", "prefix": "glyphicon", "color": "gray"},
+    )
+
+    height_text = (
+        f"{point['height']} m"
+        if point.get("height") is not None
+        else "標高不明"
+    )
 
     popup_html = f"""
-    <b>📍 {point['name']}</b><br>
-    標高：{point['height']} m<br>
-    緯度：{point['lat']:.5f}<br>
-    経度：{point['lon']:.5f}
+    <div style="min-width:180px">
+        <b>{point_type}：{point['name']}</b><br>
+        標高：{height_text}<br>
+        緯度：{point['lat']:.5f}<br>
+        経度：{point['lon']:.5f}
+    </div>
     """
 
     folium.Marker(
         location=[point["lat"], point["lon"]],
-        popup=folium.Popup(popup_html, max_width=250),
-        tooltip=f"📍 {point['name']}（{point['height']}m）",
+        popup=folium.Popup(popup_html, max_width=300),
+        tooltip=f"{point_type}｜{point['name']}",
         icon=folium.Icon(
-            color="red" if is_selected else "blue",
-            icon="info-sign"
-        )
+            color=settings["color"],
+            icon=settings["icon"],
+            prefix=settings["prefix"],
+        ),
     ).add_to(m)
+
+# 地図上に凡例を追加
+legend_html = """
+<div style="
+position: fixed;
+bottom: 20px;
+left: 20px;
+z-index: 9999;
+background: white;
+padding: 10px 12px;
+border: 1px solid #999;
+border-radius: 8px;
+font-size: 13px;
+line-height: 1.8;
+">
+<b>登山マップ</b><br>
+🔴 山頂　🟢 山小屋<br>
+🔵 登山口　🟠 テント場
+</div>
+"""
+
+m.get_root().html.add_child(folium.Element(legend_html))
 
 st_folium(
     m,
     use_container_width=True,
-    height=450,
-    returned_objects=[]
+    height=500,
+    returned_objects=[],
 )
 
 # ---------------------------------------------------------
