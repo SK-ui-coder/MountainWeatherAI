@@ -1,5 +1,7 @@
 import streamlit as st
 import plotly.express as px
+import folium
+from streamlit_folium import st_folium
 
 from mountains import mountains
 from weather import get_weather
@@ -22,15 +24,82 @@ st.caption("登山専用AI天気アプリ")
 st.divider()
 
 # ---------------------------------------------------------
-# 山選択
+# 山選択・予報地点
 # ---------------------------------------------------------
 mountain = st.selectbox("山を選択", mountains.keys())
 
-lat = mountains[mountain]["lat"]
-lon = mountains[mountain]["lon"]
-height = mountains[mountain]["height"]
+mountain_data = mountains[mountain]
+lat = mountain_data["lat"]
+lon = mountain_data["lon"]
+height = mountain_data["height"]
 
-st.info(f"標高 {height} m")
+# 複数予報地点に対応
+# mountains.py に "points" があれば、それを使用。
+# なければ従来の lat/lon/height を1地点として使用します。
+if "points" in mountain_data:
+    forecast_points = mountain_data["points"]
+else:
+    forecast_points = [{
+        "name": mountain,
+        "lat": lat,
+        "lon": lon,
+        "height": height
+    }]
+
+point_names = [p["name"] for p in forecast_points]
+selected_point_name = st.selectbox("📍 予報地点", point_names)
+
+selected_point = next(
+    p for p in forecast_points if p["name"] == selected_point_name
+)
+
+lat = selected_point["lat"]
+lon = selected_point["lon"]
+height = selected_point["height"]
+
+st.info(
+    f"📍 {selected_point['name']}　"
+    f"標高 {height} m　"
+    f"（{lat:.5f}, {lon:.5f}）"
+)
+
+# ---------------------------------------------------------
+# 予報地点マップ
+# ---------------------------------------------------------
+st.subheader("🗺️ 予報地点マップ")
+
+m = folium.Map(
+    location=[lat, lon],
+    zoom_start=13,
+    control_scale=True
+)
+
+for point in forecast_points:
+    is_selected = point["name"] == selected_point_name
+
+    popup_html = f"""
+    <b>📍 {point['name']}</b><br>
+    標高：{point['height']} m<br>
+    緯度：{point['lat']:.5f}<br>
+    経度：{point['lon']:.5f}
+    """
+
+    folium.Marker(
+        location=[point["lat"], point["lon"]],
+        popup=folium.Popup(popup_html, max_width=250),
+        tooltip=f"📍 {point['name']}（{point['height']}m）",
+        icon=folium.Icon(
+            color="red" if is_selected else "blue",
+            icon="info-sign"
+        )
+    ).add_to(m)
+
+st_folium(
+    m,
+    use_container_width=True,
+    height=450,
+    returned_objects=[]
+)
 
 # ---------------------------------------------------------
 # 天気データ取得
@@ -170,4 +239,3 @@ st.plotly_chart(fig, use_container_width=True)
 st.subheader("降水確率")
 fig = px.bar(df, x="日付", y="降水確率")
 st.plotly_chart(fig, use_container_width=True)
-
