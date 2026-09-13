@@ -2,6 +2,7 @@ import requests
 import pandas as pd
 
 BASE_URL = "https://api.open-meteo.com/v1/forecast"
+SEASONAL_URL = "https://seasonal-api.open-meteo.com/v1/seasonal"
 
 WEATHER_INFO = {
     0: ("☀️", "快晴"),
@@ -194,23 +195,46 @@ def get_current_weather(lat, lon, api_key):
     }
 
 def get_90days(lat, lon):
+    """90日長期予報。通常のforecast APIではなくSeasonal Forecast APIを使用。
+
+    通常のOpen-Meteo Forecast APIは最大16日なので、90日は
+    ECMWFの季節予報を使い「長期傾向」として取得する。
+    90日先ほどの予報は短期予報ほど局地的な精度はないため、
+    アプリ側でも「長期傾向」として表示する。
+    """
     params = {
-        "latitude": lat, "longitude": lon,
-        "daily": "weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,wind_speed_10m_max",
-        "forecast_days": 90, "timezone": "Asia/Tokyo"
+        "latitude": lat,
+        "longitude": lon,
+        "daily": "temperature_2m_mean,temperature_2m_max,temperature_2m_min,precipitation_sum,wind_speed_10m_mean",
+        "forecast_months": 3,
+        "timezone": "Asia/Tokyo",
     }
-    res = requests.get(BASE_URL, params=params, timeout=20)
+
+    res = requests.get(SEASONAL_URL, params=params, timeout=30)
     res.raise_for_status()
-    daily = res.json()["daily"]
+    daily = res.json().get("daily", {})
+
+    dates = daily.get("time", [])
+    max_temp = daily.get("temperature_2m_max", [])
+    min_temp = daily.get("temperature_2m_min", [])
+    mean_temp = daily.get("temperature_2m_mean", [])
+    precip = daily.get("precipitation_sum", [])
+    wind = daily.get("wind_speed_10m_mean", [])
+
+    # 季節APIは変数によって提供期間が異なるため、存在する長さに合わせる。
+    n = len(dates)
+    def fit(values):
+        values = list(values or [])
+        return values[:n] + [None] * max(0, n - len(values))
+
     return pd.DataFrame({
-        "日付": daily["time"],
-        "天気": [weather_icon(i) for i in daily["weather_code"]],
-        "天気詳細": [weather_text(i) for i in daily["weather_code"]],
-        "最高気温": daily["temperature_2m_max"],
-        "最低気温": daily["temperature_2m_min"],
-        "降水確率": daily["precipitation_probability_max"],
-        "風速": daily["wind_speed_10m_max"],
-    })
+        "日付": dates,
+        "平均気温": fit(mean_temp),
+        "最高気温": fit(max_temp),
+        "最低気温": fit(min_temp),
+        "降水量": fit(precip),
+        "平均風速": fit(wind),
+    }).head(90)
 
 
 # =========================================================
