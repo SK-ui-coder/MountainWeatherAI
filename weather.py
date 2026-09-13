@@ -211,3 +211,49 @@ def get_90days(lat, lon):
         "降水確率": daily["precipitation_probability_max"],
         "風速": daily["wind_speed_10m_max"],
     })
+
+
+# =========================================================
+# 14日予報：時間別データから「晴れのち曇り」等を作成
+# =========================================================
+def get_14day_weather_change(lat, lon):
+    params = {
+        "latitude": lat,
+        "longitude": lon,
+        "hourly": "weather_code",
+        "forecast_days": 14,
+        "timezone": "Asia/Tokyo"
+    }
+
+    res = requests.get(BASE_URL, params=params, timeout=20)
+    res.raise_for_status()
+    hourly = res.json()["hourly"]
+
+    df = pd.DataFrame({
+        "日時": pd.to_datetime(hourly["time"]),
+        "weather_code": hourly["weather_code"]
+    })
+
+    df["日付"] = df["日時"].dt.strftime("%Y-%m-%d")
+
+    rows = []
+    for date, group in df.groupby("日付", sort=True):
+        times = group["日時"].dt.strftime("%Y-%m-%dT%H:%M").tolist()
+        codes = group["weather_code"].tolist()
+
+        reps = _representative_codes(times, codes)
+        summary = daily_weather_summary(times, codes)
+        icons = daily_weather_icon(times, codes)
+
+        # 代表コードから、その日の「メイン天気」を取得
+        valid_codes = [c for c in reps if weather_category(c) != "不明"]
+        main_code = valid_codes[0] if valid_codes else 3
+
+        rows.append({
+            "日付": date,
+            "天気": icons,
+            "天気詳細": summary,
+            "天気コード": main_code,
+        })
+
+    return pd.DataFrame(rows)
