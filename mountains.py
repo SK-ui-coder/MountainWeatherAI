@@ -1,360 +1,259 @@
-# mountains.py - Mountain Weather AI 用 山データ
-# 予報地点は locations に登録した地点から選択できます。
-# 標高・山頂座標は国土地理院「日本の主な山岳標高」等を基準に整理。
+import requests
+import pandas as pd
 
-mountains = {
-    # =====================================================
-    # 中国・四国
-    # =====================================================
-    "石鎚山": {
-        "lat": 33.7678, "lon": 133.1150, "height": 1982,
-        "region": "愛媛", "type": "百名山",
-        "locations": [
-            {"name": "天狗岳", "type": "山頂", "lat": 33.7678, "lon": 133.1150, "height": 1982},
-            {"name": "弥山", "type": "山頂", "lat": 33.7690, "lon": 133.1136, "height": 1974},
-            {"name": "石鎚神社頂上山荘", "type": "山小屋", "lat": 33.7690, "lon": 133.1136, "height": 1974},
-            {"name": "土小屋", "type": "登山口", "lat": 33.7950, "lon": 133.1190, "height": 1492},
-            {"name": "成就社", "type": "登山口", "lat": 33.7900, "lon": 133.1550, "height": 1400},
-            {"name": "二ノ鎖元避難小屋周辺", "type": "避難小屋", "lat": 33.7750, "lon": 133.1200, "height": 1800},
-        ],
-    },
+BASE_URL = "https://api.open-meteo.com/v1/forecast"
 
-    "剣山": {
-        "lat": 33.8536, "lon": 134.0942, "height": 1955,
-        "region": "徳島", "type": "百名山",
-        "locations": [
-            {"name": "剣山山頂", "type": "山頂", "lat": 33.8536, "lon": 134.0942, "height": 1955},
-            {"name": "剣山頂上ヒュッテ", "type": "山小屋", "lat": 33.8540, "lon": 134.0940, "height": 1950},
-            {"name": "見ノ越", "type": "登山口", "lat": 33.8400, "lon": 134.0820, "height": 1410},
-            {"name": "西島駅周辺", "type": "テント場", "lat": 33.8500, "lon": 134.0870, "height": 1750},
-            {"name": "一ノ森ヒュッテ", "type": "山小屋", "lat": 33.8390, "lon": 134.1040, "height": 1879},
-        ],
-    },
-
-    "大山": {
-        "lat": 35.3536, "lon": 133.5390, "height": 1729,
-        "region": "鳥取", "type": "百名山",
-        "locations": [
-            {"name": "弥山山頂", "type": "山頂", "lat": 35.3536, "lon": 133.5390, "height": 1709},
-            {"name": "大山頂上避難小屋", "type": "避難小屋", "lat": 35.3535, "lon": 133.5390, "height": 1709},
-            {"name": "夏山登山口", "type": "登山口", "lat": 35.3690, "lon": 133.5390, "height": 780},
-        ],
-    },
-
-    "蒜山": {
-        "lat": 35.3417, "lon": 133.6820, "height": 1202,
-        "region": "岡山", "type": "中国百名山",
-        "locations": [
-            {"name": "上蒜山", "type": "山頂", "lat": 35.3417, "lon": 133.6820, "height": 1202},
-            {"name": "中蒜山", "type": "山頂", "lat": 35.3290, "lon": 133.6860, "height": 1123},
-            {"name": "下蒜山", "type": "山頂", "lat": 35.3200, "lon": 133.6720, "height": 1100},
-            {"name": "上蒜山登山口", "type": "登山口", "lat": 35.3500, "lon": 133.6740, "height": 700},
-        ],
-    },
-
-    "那岐山": {
-        "lat": 35.1800, "lon": 134.1790, "height": 1255,
-        "region": "岡山・鳥取", "type": "中国百名山",
-        "locations": [
-            {"name": "那岐山山頂", "type": "山頂", "lat": 35.1800, "lon": 134.1790, "height": 1255},
-            {"name": "那岐山登山口", "type": "登山口", "lat": 35.1700, "lon": 134.1810, "height": 650},
-            {"name": "那岐山避難小屋", "type": "避難小屋", "lat": 35.1780, "lon": 134.1800, "height": 1200},
-        ],
-    },
-
-    "瓶ヶ森": {
-        "lat": 33.7947, "lon": 133.1933, "height": 1896,
-        "region": "愛媛", "type": "四国の山",
-        "locations": [
-            {"name": "瓶ヶ森山頂", "type": "山頂", "lat": 33.7947, "lon": 133.1933, "height": 1896},
-            {"name": "瓶ヶ森登山口", "type": "登山口", "lat": 33.8000, "lon": 133.1900, "height": 1670},
-            {"name": "瓶ヶ森避難小屋", "type": "避難小屋", "lat": 33.7970, "lon": 133.1900, "height": 1800},
-        ],
-    },
-
-    "三嶺": {
-        "lat": 33.8394, "lon": 133.9878, "height": 1894,
-        "region": "徳島・高知", "type": "四国の山",
-        "locations": [
-            {"name": "三嶺山頂", "type": "山頂", "lat": 33.8394, "lon": 133.9878, "height": 1894},
-            {"name": "三嶺ヒュッテ", "type": "避難小屋", "lat": 33.8400, "lon": 133.9850, "height": 1850},
-            {"name": "名頃登山口", "type": "登山口", "lat": 33.8320, "lon": 133.9580, "height": 900},
-        ],
-    },
-
-    "笹ヶ峰": {
-        "lat": 33.827, "lon": 133.275, "height": 1860,
-        "region": "愛媛・高知", "type": "四国の山",
-        "locations": [
-            {"name": "笹ヶ峰山頂", "type": "山頂", "lat": 33.827, "lon": 133.275, "height": 1860},
-            {"name": "笹ヶ峰登山口", "type": "登山口", "lat": 33.812, "lon": 133.282, "height": 1100},
-        ],
-    },
-
-    # =====================================================
-    # 九州
-    # =====================================================
-    "九重山": {
-        "lat": 33.084, "lon": 131.240, "height": 1791,
-        "region": "大分", "type": "百名山",
-        "locations": [
-            {"name": "中岳", "type": "山頂", "lat": 33.084, "lon": 131.240, "height": 1791},
-            {"name": "久住山", "type": "山頂", "lat": 33.085, "lon": 131.249, "height": 1787},
-            {"name": "法華院温泉山荘", "type": "山小屋", "lat": 33.087, "lon": 131.278, "height": 1300},
-            {"name": "坊ガツル", "type": "テント場", "lat": 33.086, "lon": 131.276, "height": 1230},
-            {"name": "牧ノ戸峠", "type": "登山口", "lat": 33.105, "lon": 131.207, "height": 1333},
-        ],
-    },
-
-    "阿蘇山": {
-        "lat": 32.884, "lon": 131.104, "height": 1592,
-        "region": "熊本", "type": "百名山",
-        "locations": [
-            {"name": "高岳", "type": "山頂", "lat": 32.884, "lon": 131.104, "height": 1592},
-            {"name": "高岳避難小屋", "type": "避難小屋", "lat": 32.883, "lon": 131.107, "height": 1550},
-            {"name": "仙酔峡登山口", "type": "登山口", "lat": 32.893, "lon": 131.110, "height": 800},
-        ],
-    },
-
-    "霧島山": {
-        "lat": 31.934, "lon": 130.862, "height": 1700,
-        "region": "宮崎・鹿児島", "type": "百名山",
-        "ship_origin": "旧日本海軍 戦艦「霧島」",
-        "locations": [
-            {"name": "韓国岳", "type": "山頂", "lat": 31.934, "lon": 130.862, "height": 1700},
-            {"name": "韓国岳避難小屋", "type": "避難小屋", "lat": 31.935, "lon": 130.857, "height": 1450},
-            {"name": "韓国岳登山口", "type": "登山口", "lat": 31.945, "lon": 130.854, "height": 1200},
-            {"name": "大浪池休憩所", "type": "山小屋", "lat": 31.930, "lon": 130.870, "height": 1400},
-        ],
-    },
-
-    "開聞岳": {
-        "lat": 31.180, "lon": 130.528, "height": 924,
-        "region": "鹿児島", "type": "百名山",
-        "locations": [
-            {"name": "開聞岳山頂", "type": "山頂", "lat": 31.180, "lon": 130.528, "height": 924},
-            {"name": "開聞岳登山口", "type": "登山口", "lat": 31.185, "lon": 130.540, "height": 100},
-        ],
-    },
-
-    # =====================================================
-    # 東北・上信越・北アルプス
-    # =====================================================
-    "鳥海山": {
-        "lat": 39.099, "lon": 140.049, "height": 2236,
-        "region": "秋田・山形", "type": "百名山",
-        "ship_origin": "旧日本海軍 重巡洋艦「鳥海」",
-        "locations": [
-            {"name": "新山", "type": "山頂", "lat": 39.099, "lon": 140.049, "height": 2236},
-            {"name": "御室小屋", "type": "山小屋", "lat": 39.098, "lon": 140.046, "height": 2150},
-            {"name": "御浜小屋", "type": "山小屋", "lat": 39.105, "lon": 140.030, "height": 1700},
-            {"name": "鉾立", "type": "登山口", "lat": 39.110, "lon": 140.050, "height": 1150},
-            {"name": "大平", "type": "登山口", "lat": 39.100, "lon": 140.080, "height": 1100},
-        ],
-    },
-
-    "妙高山": {
-        "lat": 36.891, "lon": 138.114, "height": 2454,
-        "region": "新潟", "type": "百名山",
-        "ship_origin": "旧日本海軍 重巡洋艦「妙高」",
-        "locations": [
-            {"name": "妙高山北峰", "type": "山頂", "lat": 36.892, "lon": 138.114, "height": 2454},
-            {"name": "妙高山南峰", "type": "山頂", "lat": 36.889, "lon": 138.114, "height": 2446},
-            {"name": "高谷池ヒュッテ", "type": "山小屋", "lat": 36.912, "lon": 138.087, "height": 2100},
-            {"name": "黒沢池ヒュッテ", "type": "山小屋", "lat": 36.901, "lon": 138.091, "height": 2000},
-            {"name": "燕温泉", "type": "登山口", "lat": 36.900, "lon": 138.113, "height": 1150},
-            {"name": "笹ヶ峰", "type": "登山口", "lat": 36.870, "lon": 138.080, "height": 1300},
-            {"name": "高谷池テント場", "type": "テント場", "lat": 36.913, "lon": 138.087, "height": 2100},
-        ],
-    },
-
-    "立山": {
-        "lat": 36.575, "lon": 137.618, "height": 3015,
-        "region": "富山", "type": "百名山",
-        "locations": [
-            {"name": "雄山", "type": "山頂", "lat": 36.575, "lon": 137.618, "height": 3003},
-            {"name": "立山（大汝山）", "type": "山頂", "lat": 36.578, "lon": 137.619, "height": 3015},
-            {"name": "室堂", "type": "登山口", "lat": 36.577, "lon": 137.599, "height": 2450},
-            {"name": "立山室堂山荘", "type": "山小屋", "lat": 36.578, "lon": 137.596, "height": 2450},
-            {"name": "雷鳥沢キャンプ場", "type": "テント場", "lat": 36.583, "lon": 137.603, "height": 2280},
-        ],
-    },
-
-    "剱岳": {
-        "lat": 36.623, "lon": 137.618, "height": 2999,
-        "region": "富山", "type": "百名山",
-        "locations": [
-            {"name": "剱岳山頂", "type": "山頂", "lat": 36.623, "lon": 137.618, "height": 2999},
-            {"name": "剱澤小屋", "type": "山小屋", "lat": 36.604, "lon": 137.612, "height": 2470},
-            {"name": "剱沢キャンプ場", "type": "テント場", "lat": 36.606, "lon": 137.614, "height": 2500},
-            {"name": "室堂", "type": "登山口", "lat": 36.577, "lon": 137.599, "height": 2450},
-        ],
-    },
-
-    "富士山": {
-        "lat": 35.3606, "lon": 138.7274, "height": 3776,
-        "region": "山梨・静岡", "type": "百名山",
-        "locations": [
-            {"name": "剣ヶ峰", "type": "山頂", "lat": 35.3606, "lon": 138.7274, "height": 3776},
-            {"name": "富士宮口五合目", "type": "登山口", "lat": 35.341, "lon": 138.735, "height": 2400},
-            {"name": "吉田口五合目", "type": "登山口", "lat": 35.395, "lon": 138.735, "height": 2300},
-        ],
-    },
-
-    # =====================================================
-    # 軍艦名由来として整理した山
-    # 「山名を艦名に採用したもの」だけを登録。
-    # 河川由来の加古・最上・三隈・鈴谷・熊野・利根・筑摩は登録しない。
-    # =====================================================
-    "金剛山": {
-        "lat": 34.419, "lon": 135.682, "height": 1125,
-        "region": "大阪・奈良", "type": "軍艦名由来",
-        "ship_origin": "金剛型巡洋戦艦「金剛」",
-        "locations": [
-            {"name": "金剛山山頂", "type": "山頂", "lat": 34.419, "lon": 135.682, "height": 1125},
-        ],
-    },
-
-    "比叡山": {
-        "lat": 35.066, "lon": 135.835, "height": 848,
-        "region": "京都・滋賀", "type": "軍艦名由来",
-        "ship_origin": "金剛型巡洋戦艦「比叡」",
-        "locations": [
-            {"name": "大比叡", "type": "山頂", "lat": 35.066, "lon": 135.835, "height": 848},
-        ],
-    },
-
-    "榛名山": {
-        "lat": 36.477, "lon": 138.851, "height": 1449,
-        "region": "群馬", "type": "軍艦名由来",
-        "ship_origin": "金剛型巡洋戦艦「榛名」",
-        "locations": [
-            {"name": "榛名山・掃部ヶ岳", "type": "山頂", "lat": 36.477, "lon": 138.851, "height": 1449},
-        ],
-    },
-
-    "霧島山": {
-        "lat": 31.934, "lon": 130.862, "height": 1700,
-        "region": "宮崎・鹿児島", "type": "軍艦名由来",
-        "ship_origin": "金剛型巡洋戦艦「霧島」",
-        "locations": [
-            {"name": "韓国岳", "type": "山頂", "lat": 31.934, "lon": 130.862, "height": 1700},
-        ],
-    },
-
-    "妙高山": {
-        "lat": 36.891, "lon": 138.114, "height": 2454,
-        "region": "新潟", "type": "軍艦名由来",
-        "ship_origin": "妙高型重巡洋艦「妙高」",
-        "locations": [
-            {"name": "妙高山北峰", "type": "山頂", "lat": 36.892, "lon": 138.114, "height": 2454},
-            {"name": "燕温泉", "type": "登山口", "lat": 36.900, "lon": 138.113, "height": 1150},
-            {"name": "高谷池ヒュッテ", "type": "山小屋", "lat": 36.912, "lon": 138.087, "height": 2100},
-            {"name": "黒沢池ヒュッテ", "type": "山小屋", "lat": 36.901, "lon": 138.091, "height": 2000},
-        ],
-    },
-
-    "那智山": {
-        "lat": 33.672, "lon": 135.886, "height": 867,
-        "region": "和歌山", "type": "軍艦名由来",
-        "ship_origin": "妙高型重巡洋艦「那智」",
-        "locations": [
-            {"name": "那智山", "type": "山頂", "lat": 33.672, "lon": 135.886, "height": 867},
-        ],
-    },
-
-    "足柄山": {
-        "lat": 35.327, "lon": 139.004, "height": 1212,
-        "region": "神奈川・静岡", "type": "軍艦名由来",
-        "ship_origin": "妙高型重巡洋艦「足柄」",
-        "locations": [
-            {"name": "足柄山周辺", "type": "山頂", "lat": 35.327, "lon": 139.004, "height": 1212},
-        ],
-    },
-
-    "羽黒山": {
-        "lat": 38.702, "lon": 139.977, "height": 414,
-        "region": "山形", "type": "軍艦名由来",
-        "ship_origin": "妙高型重巡洋艦「羽黒」",
-        "locations": [
-            {"name": "羽黒山", "type": "山頂", "lat": 38.702, "lon": 139.977, "height": 414},
-        ],
-    },
-
-   "高雄山": {
-    "lat": 35.056,
-    "lon": 135.666,
-    "height": 429,
-    "region": "京都",
-    "type": "軍艦名由来",
-    "ship_origin": "高雄型重巡洋艦「高雄」",
-    "locations": [
-        {
-            "name": "高雄山",
-            "type": "山頂",
-            "lat": 35.056,
-            "lon": 135.666,
-            "height": 429,
-        },
-    ],
-},
-
-    "愛宕山": {
-        "lat": 35.060, "lon": 135.634, "height": 924,
-        "region": "京都", "type": "軍艦名由来",
-        "ship_origin": "高雄型重巡洋艦「愛宕」",
-        "locations": [
-            {"name": "愛宕山", "type": "山頂", "lat": 35.060, "lon": 135.634, "height": 924},
-        ],
-    },
-
-    "摩耶山": {
-        "lat": 34.733, "lon": 135.204, "height": 702,
-        "region": "兵庫", "type": "軍艦名由来",
-        "ship_origin": "高雄型重巡洋艦「摩耶」",
-        "locations": [
-            {"name": "摩耶山", "type": "山頂", "lat": 34.733, "lon": 135.204, "height": 702},
-        ],
-    },
-
-    "鳥海山": {
-        "lat": 39.099, "lon": 140.049, "height": 2236,
-        "region": "秋田・山形", "type": "軍艦名由来",
-        "ship_origin": "高雄型重巡洋艦「鳥海」",
-        "locations": [
-            {"name": "新山", "type": "山頂", "lat": 39.099, "lon": 140.049, "height": 2236},
-            {"name": "御室小屋", "type": "山小屋", "lat": 39.098, "lon": 140.046, "height": 2150},
-            {"name": "御浜小屋", "type": "山小屋", "lat": 39.105, "lon": 140.030, "height": 1700},
-            {"name": "鉾立", "type": "登山口", "lat": 39.110, "lon": 140.050, "height": 1150},
-            {"name": "大平", "type": "登山口", "lat": 39.100, "lon": 140.080, "height": 1100},
-        ],
-    },
-
-    "古鷹山": {
-        "lat": 34.260, "lon": 132.504, "height": 394,
-        "region": "広島", "type": "軍艦名由来",
-        "ship_origin": "古鷹型重巡洋艦「古鷹」",
-        "locations": [
-            {"name": "古鷹山", "type": "山頂", "lat": 34.260, "lon": 132.504, "height": 394},
-        ],
-    },
-
-    "青葉山": {
-        "lat": 35.480, "lon": 135.454, "height": 693,
-        "region": "京都・福井", "type": "軍艦名由来",
-        "ship_origin": "古鷹型重巡洋艦「青葉」",
-        "locations": [
-            {"name": "青葉山", "type": "山頂", "lat": 35.480, "lon": 135.454, "height": 693},
-        ],
-    },
-
-    # 衣笠は由来説が複数あるため「軍艦名由来」と断定せず別名候補として登録。
-    "衣笠山": {
-        "lat": 35.257, "lon": 139.667, "height": 134,
-        "region": "神奈川", "type": "艦名由来候補",
-        "ship_origin": "重巡洋艦「衣笠」：横須賀衣笠山説・徳島高越山（衣笠山）説など諸説あり",
-        "locations": [
-            {"name": "衣笠山", "type": "山頂", "lat": 35.257, "lon": 139.667, "height": 134},
-        ],
-    },
+WEATHER_INFO = {
+    0: ("☀️", "快晴"),
+    1: ("🌤️", "晴れ"),
+    2: ("⛅", "晴れ時々曇り"),
+    3: ("☁️", "曇り"),
+    45: ("🌫️", "霧"),
+    48: ("🌫️", "霧"),
+    51: ("🌦️", "弱い霧雨"),
+    53: ("🌦️", "霧雨"),
+    55: ("🌦️", "強い霧雨"),
+    56: ("🌧️", "弱い着氷性霧雨"),
+    57: ("🌧️", "強い着氷性霧雨"),
+    61: ("🌧️", "弱い雨"),
+    63: ("🌧️", "雨"),
+    65: ("🌧️", "強い雨"),
+    66: ("🌧️", "弱い着氷性の雨"),
+    67: ("🌧️", "強い着氷性の雨"),
+    71: ("❄️", "弱い雪"),
+    73: ("❄️", "雪"),
+    75: ("❄️", "強い雪"),
+    77: ("🌨️", "雪あられ"),
+    80: ("🌦️", "弱いにわか雨"),
+    81: ("🌦️", "にわか雨"),
+    82: ("🌧️", "強いにわか雨"),
+    85: ("🌨️", "弱いにわか雪"),
+    86: ("🌨️", "強いにわか雪"),
+    95: ("⛈️", "雷雨"),
+    96: ("⛈️", "雷雨＋ひょう"),
+    99: ("⛈️", "強い雷雨＋ひょう"),
 }
+
+def weather_info(code):
+    try:
+        code = int(code)
+    except (TypeError, ValueError):
+        return "🌥️", "天気不明"
+    return WEATHER_INFO.get(code, ("🌥️", "天気不明"))
+
+def weather_icon(code):
+    return weather_info(code)[0]
+
+def weather_text(code):
+    return weather_info(code)[1]
+
+def weather_category(code):
+    try:
+        code = int(code)
+    except (TypeError, ValueError):
+        return "不明"
+    if code in [0, 1, 2]:
+        return "晴れ"
+    if code == 3:
+        return "曇り"
+    if code in [45, 48]:
+        return "霧"
+    if code in [51, 53, 55, 56, 57, 61, 63, 65, 66, 67, 80, 81, 82]:
+        return "雨"
+    if code in [71, 73, 75, 77, 85, 86]:
+        return "雪"
+    if code in [95, 96, 99]:
+        return "雷雨"
+    return "不明"
+
+def _representative_codes(times, codes):
+    records = []
+    for t, c in zip(times, codes):
+        try:
+            records.append((pd.to_datetime(t), c))
+        except Exception:
+            pass
+    if not records:
+        return []
+    periods = [(5, 10), (10, 14), (14, 18), (18, 24)]
+    result = []
+    for start, end in periods:
+        candidates = [(ts, c) for ts, c in records if start <= ts.hour < end]
+        if candidates:
+            result.append(candidates[-1][1])
+    return result
+
+def daily_weather_summary(times, codes):
+    reps = _representative_codes(times, codes)
+    if not reps:
+        return "天気不明"
+    cats = [weather_category(c) for c in reps]
+    valid = [c for c in cats if c != "不明"]
+    if not valid:
+        return "天気不明"
+    changed = []
+    for cat in valid:
+        if not changed or changed[-1] != cat:
+            changed.append(cat)
+    if len(changed) == 1:
+        return weather_text(reps[0])
+    return f"{changed[0]}のち{changed[-1]}"
+
+def daily_weather_icon(times, codes):
+    reps = _representative_codes(times, codes)
+    icons = []
+    cats = []
+    for code in reps:
+        cat = weather_category(code)
+        if cat == "不明":
+            continue
+        if not cats or cats[-1] != cat:
+            cats.append(cat)
+            icons.append(weather_icon(code))
+    return "→".join(icons[:3]) if icons else "🌥️"
+
+def get_weather(lat, lon):
+    params = {
+        "latitude": lat, "longitude": lon,
+        "daily": "weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,wind_speed_10m_max,sunrise,sunset",
+        "forecast_days": 14, "timezone": "Asia/Tokyo"
+    }
+    response = requests.get(BASE_URL, params=params, timeout=20)
+    response.raise_for_status()
+    daily = response.json()["daily"]
+    return pd.DataFrame({
+        "日付": daily["time"],
+        "天気": [weather_icon(i) for i in daily["weather_code"]],
+        "天気詳細": [weather_text(i) for i in daily["weather_code"]],
+        "最高気温": daily["temperature_2m_max"],
+        "最低気温": daily["temperature_2m_min"],
+        "降水確率": daily["precipitation_probability_max"],
+        "風速": daily["wind_speed_10m_max"],
+        "日の出": daily["sunrise"],
+        "日の入り": daily["sunset"]
+    })
+
+def get_hourly(lat, lon):
+    params = {
+        "latitude": lat, "longitude": lon,
+        "hourly": "temperature_2m,relative_humidity_2m,precipitation,weather_code,wind_speed_10m,wind_direction_10m",
+        "forecast_days": 2, "timezone": "Asia/Tokyo"
+    }
+    res = requests.get(BASE_URL, params=params, timeout=20)
+    res.raise_for_status()
+    hourly = res.json()["hourly"]
+    df = pd.DataFrame({
+        "時刻": pd.to_datetime(hourly["time"]),
+        "気温": hourly["temperature_2m"],
+        "湿度": hourly["relative_humidity_2m"],
+        "雨量": hourly["precipitation"],
+        "天気": [weather_icon(i) for i in hourly["weather_code"]],
+        "天気詳細": [weather_text(i) for i in hourly["weather_code"]],
+        "天気分類": [weather_category(i) for i in hourly["weather_code"]],
+        "風速": hourly["wind_speed_10m"],
+        "風向": [wind_direction(d) for d in hourly["wind_direction_10m"]],
+        "風向度": hourly["wind_direction_10m"],
+    })
+    now = pd.Timestamp.now(tz="Asia/Tokyo").tz_localize(None)
+    return df[df["時刻"] >= now].head(24).reset_index(drop=True)
+
+def get_today_weather_summary(lat, lon):
+    params = {
+        "latitude": lat, "longitude": lon,
+        "hourly": "weather_code", "forecast_days": 1,
+        "timezone": "Asia/Tokyo"
+    }
+    res = requests.get(BASE_URL, params=params, timeout=20)
+    res.raise_for_status()
+    hourly = res.json()["hourly"]
+    return {
+        "天気": daily_weather_summary(hourly["time"], hourly["weather_code"]),
+        "アイコン": daily_weather_icon(hourly["time"], hourly["weather_code"]),
+    }
+
+def wind_direction(deg):
+    dirs = ["北", "北北東", "北東", "東北東", "東", "東南東", "南東", "南南東",
+            "南", "南南西", "南西", "西南西", "西", "西北西", "北西", "北北西"]
+    try:
+        return dirs[int((float(deg) + 11.25) / 22.5) % 16]
+    except (TypeError, ValueError):
+        return "不明"
+
+def get_current_weather(lat, lon, api_key):
+    url = f"https://api.openweathermap.org/data/2.5/weather?lat={lat}&lon={lon}&appid={api_key}&units=metric&lang=ja"
+    res = requests.get(url, timeout=20)
+    res.raise_for_status()
+    data = res.json()
+    return {
+        "現在気温": data["main"]["temp"],
+        "体感温度": data["main"]["feels_like"],
+        "現在天気": data["weather"][0]["description"],
+        "湿度": data["main"]["humidity"],
+        "風速": data["wind"]["speed"],
+        "風向": wind_direction(data["wind"]["deg"]) if "deg" in data["wind"] else "不明",
+    }
+
+def get_90days(lat, lon):
+    params = {
+        "latitude": lat, "longitude": lon,
+        "daily": "weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,wind_speed_10m_max",
+        "forecast_days": 90, "timezone": "Asia/Tokyo"
+    }
+    res = requests.get(BASE_URL, params=params, timeout=20)
+    res.raise_for_status()
+    daily = res.json()["daily"]
+    return pd.DataFrame({
+        "日付": daily["time"],
+        "天気": [weather_icon(i) for i in daily["weather_code"]],
+        "天気詳細": [weather_text(i) for i in daily["weather_code"]],
+        "最高気温": daily["temperature_2m_max"],
+        "最低気温": daily["temperature_2m_min"],
+        "降水確率": daily["precipitation_probability_max"],
+        "風速": daily["wind_speed_10m_max"],
+    })
+
+
+# =========================================================
+# 14日予報：時間別データから「晴れのち曇り」等を作成
+# =========================================================
+def get_14day_weather_change(lat, lon):
+    params = {
+        "latitude": lat,
+        "longitude": lon,
+        "hourly": "weather_code",
+        "forecast_days": 14,
+        "timezone": "Asia/Tokyo"
+    }
+
+    res = requests.get(BASE_URL, params=params, timeout=20)
+    res.raise_for_status()
+    hourly = res.json()["hourly"]
+
+    df = pd.DataFrame({
+        "日時": pd.to_datetime(hourly["time"]),
+        "weather_code": hourly["weather_code"]
+    })
+
+    df["日付"] = df["日時"].dt.strftime("%Y-%m-%d")
+
+    rows = []
+    for date, group in df.groupby("日付", sort=True):
+        times = group["日時"].dt.strftime("%Y-%m-%dT%H:%M").tolist()
+        codes = group["weather_code"].tolist()
+
+        reps = _representative_codes(times, codes)
+        summary = daily_weather_summary(times, codes)
+        icons = daily_weather_icon(times, codes)
+
+        # 代表コードから、その日の「メイン天気」を取得
+        valid_codes = [c for c in reps if weather_category(c) != "不明"]
+        main_code = valid_codes[0] if valid_codes else 3
+
+        rows.append({
+            "日付": date,
+            "天気": icons,
+            "天気詳細": summary,
+            "天気コード": main_code,
+        })
+
+    return pd.DataFrame(rows)
