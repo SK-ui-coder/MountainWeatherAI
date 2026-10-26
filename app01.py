@@ -230,8 +230,23 @@ for g in gear:
     st.success(g)
 
 st.subheader("14日予報")
-display_cols = ["日付", "天気詳細", "最高気温", "最低気温", "降水確率", "最大風速", "最大瞬間風速", "おすすめ", "風の危険度"]
-st.dataframe(df[display_cols], use_container_width=True, hide_index=True)
+display_cols = [
+    "日付",
+    "天気",  # ☀️🌤️⛅☁️🌧️❄️ などの天気絵文字
+    "天気詳細",
+    "最高気温",
+    "最低気温",
+    "降水確率",
+    "最大風速",
+    "最大瞬間風速",
+    "おすすめ",
+    "風の危険度",
+]
+st.dataframe(
+    df[display_cols],
+    use_container_width=True,
+    hide_index=True,
+)
 
 for title, kind, y in [
     ("最高気温", "line", "最高気温"),
