@@ -1,7 +1,6 @@
-gpxpy
-pydeck
-plotly
-pandas
 streamlit
+requests
+pandas
+plotly
 folium
 streamlit-folium
